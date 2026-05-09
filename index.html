@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color Calendar</title>
+ 
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg:       #ffffff;
+      --bg-sec:   #f4f3ef;
+      --bg-ter:   #eceae4;
+      --text:     #1a1a18;
+      --text-sec: #5f5e5a;
+      --text-ter: #9a9891;
+      --border:   rgba(0,0,0,0.12);
+      --border-md:rgba(0,0,0,0.22);
+      --border-hv:rgba(0,0,0,0.35);
+      --radius-md:8px;
+      --radius-lg:12px;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
+ 
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:       #1c1c1a;
+        --bg-sec:   #262624;
+        --bg-ter:   #2e2e2b;
+        --text:     #f0ede6;
+        --text-sec: #a09e98;
+        --text-ter: #6a6865;
+        --border:   rgba(255,255,255,0.10);
+        --border-md:rgba(255,255,255,0.20);
+        --border-hv:rgba(255,255,255,0.35);
+      }
+    }
+ 
+    body {
+      font-family: var(--font);
+      background: var(--bg-ter);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+ 
+    /* ── App card ────────────────────────── */
+    .app {
+      background: var(--bg);
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      width: 100%;
+      max-width: 860px;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 1.5rem;
+    }
+ 
+    /* ── Left: Calendar ─────────────────── */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+ 
+    .cal-title { font-size: 18px; font-weight: 500; }
+ 
+    .nav-btn {
+      background: none;
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      transition: background .15s;
+    }
+    .nav-btn:hover { background: var(--bg-sec); }
+ 
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+ 
+    .day-label {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-ter);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 4px 0 6px;
+    }
+ 
+    .day-cell {
+      aspect-ratio: 1;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 5px 6px;
+      cursor: pointer;
+      transition: border-color .15s, transform .1s;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .day-cell.weekend { background: var(--bg-sec); }
+    .day-cell:hover { border-color: var(--border-hv); transform: scale(1.04); }
+    .day-cell.empty { border-color: transparent; cursor: default; background: none; }
+    .day-cell.empty:hover { transform: none; }
+    .day-cell.selected { border: 1.5px solid var(--text); }
+ 
+    .day-cell.today .day-num {
+      background: var(--text);
+      color: var(--bg);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+ 
+    .day-num { font-size: 12px; font-weight: 500; line-height: 1; z-index: 1; }
+ 
+    .day-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: auto; z-index: 1; }
+ 
+    .day-title-preview {
+      font-size: 9px;
+      color: var(--text-sec);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      z-index: 1;
+      line-height: 1.2;
+    }
+ 
+    .day-bg { position: absolute; inset: 0; opacity: .18; z-index: 0; }
+ 
+    /* ── Right: Panel ───────────────────── */
+    .panel {
+      border-left: 0.5px solid var(--border);
+      padding-left: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+ 
+    .panel-section-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-ter);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 2px;
+    }
+ 
+    .upcoming-list { display: flex; flex-direction: column; gap: 8px; }
+ 
+    .upcoming-item {
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      padding: 8px 10px;
+      display: grid;
+      grid-template-columns: 4px 1fr auto;
+      align-items: start;
+      gap: 8px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      background: var(--bg);
+    }
+    .upcoming-item:hover { border-color: var(--border-hv); background: var(--bg-sec); }
+ 
+    .upcoming-color {
+      width: 4px;
+      border-radius: 2px;
+      align-self: stretch;
+      min-height: 28px;
+      background: var(--border-md);
+    }
+ 
+    .upcoming-body { overflow: hidden; }
+ 
+    .upcoming-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+ 
+    .upcoming-date {
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 2px;
+    }
+ 
+    .upcoming-countdown {
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      padding: 2px 6px;
+      border-radius: 20px;
+      background: var(--bg-sec);
+      color: var(--text-sec);
+      align-self: center;
+    }
+    .upcoming-countdown.today {
+      background: var(--bg-ter);
+      color: var(--text);
+    }
+ 
+    .no-upcoming {
+      font-size: 13px;
+      color: var(--text-ter);
+      text-align: center;
+      margin-top: 1.5rem;
+      line-height: 1.7;
+    }
+ 
+    .panel-empty {
+      color: var(--text-ter);
+      font-size: 13px;
+      margin-top: 2rem;
+      text-align: center;
+      line-height: 1.7;
+    }
+ 
+    .panel-date { font-size: 15px; font-weight: 500; color: var(--text); }
+ 
+    .panel-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-ter);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 5px;
+    }
+ 
+    .panel-input {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border-md);
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      transition: border-color .15s;
+    }
+    .panel-input:focus { outline: none; border-color: var(--border-hv); }
+    .panel-textarea { resize: none; height: 80px; line-height: 1.5; }
+ 
+    .color-swatches { display: flex; flex-wrap: wrap; gap: 7px; }
+ 
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform .12s, border-color .12s;
+    }
+    .swatch:hover { transform: scale(1.18); }
+    .swatch.active { border-color: var(--text); }
+ 
+    .swatch-none {
+      background: var(--bg-sec);
+      border: 0.5px solid var(--border-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-ter);
+      font-size: 14px;
+    }
+ 
+    .btn-save {
+      width: 100%;
+      padding: 9px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border-md);
+      background: var(--bg-sec);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background .15s;
+    }
+    .btn-save:hover { background: var(--bg-ter); }
+ 
+    .btn-clear {
+      width: 100%;
+      padding: 7px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: none;
+      color: var(--text-ter);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: color .15s, border-color .15s;
+    }
+    .btn-clear:hover { color: #e24b4a; border-color: #e24b4a; }
+ 
+    .saved-flash { font-size: 11px; color: #1d9e75; text-align: center; min-height: 14px; }
+ 
+    .panel-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+ 
+    @media (max-width: 640px) {
+      .app { grid-template-columns: 1fr; }
+      .panel { border-left: none; border-top: 0.5px solid var(--border); padding-left: 0; padding-top: 1rem; }
+    }
+  </style>
+</head>
+<body>
+ 
+ 
+ 
+<main class="app">
+  <div class="cal-left">
+    <div class="cal-nav">
+      <button class="nav-btn" id="prev" aria-label="Previous month">&#8592;</button>
+      <span class="cal-title" id="month-label"></span>
+      <button class="nav-btn" id="next" aria-label="Next month">&#8594;</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+  <aside class="panel" id="panel">
+    <div class="panel-empty">
+      <i class="ti ti-calendar-event"></i>
+      Click a day<br>to add details
+    </div>
+  </aside>
+</main>
+ 
+<script>
+  const COLORS = [
+    { hex: '#E24B4A', label: 'Red'    },
+    { hex: '#EF9F27', label: 'Amber'  },
+    { hex: '#639922', label: 'Green'  },
+    { hex: '#1D9E75', label: 'Teal'   },
+    { hex: '#378ADD', label: 'Blue'   },
+    { hex: '#7F77DD', label: 'Purple' },
+    { hex: '#D4537E', label: 'Pink'   },
+    { hex: '#D85A30', label: 'Coral'  },
+    { hex: '#888780', label: 'Gray'   },
+  ];
+ 
+  const DAYS   = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+ 
+  const STORAGE_KEY = 'color-calendar-events';
+  /* ── Storage ──────────────────────────── */
+  function loadEvents() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function saveEvents(ev) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ev)); } catch (e) {}
+  }
+ 
+  /* ── State ────────────────────────────── */
+  let state = {
+    year:     new Date().getFullYear(),
+    month:    new Date().getMonth(),
+    selected: null,
+    events:   loadEvents(),
+  };
+  let pending = { color: '', title: '', desc: '' };
+ 
+  function key(y, m, d) { return `${y}-${m}-${d}`; }
+ 
+  /* ── Render ───────────────────────────── */
+  function render() { renderCalendar(); renderPanel(); }
+ 
+  function renderCalendar() {
+    const { year, month, selected, events } = state;
+    document.getElementById('month-label').textContent = `${MONTHS[month]} ${year}`;
+ 
+    const grid = document.getElementById('cal-grid');
+    grid.innerHTML = '';
+ 
+    DAYS.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'day-label'; el.textContent = d;
+      grid.appendChild(el);
+    });
+ 
+    const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+    const daysInMonth  = new Date(year, month + 1, 0).getDate();
+    const today        = new Date();
+ 
+    for (let i = 0; i < firstWeekday; i++) {
+      const el = document.createElement('div');
+      el.className = 'day-cell empty';
+      grid.appendChild(el);
+    }
+ 
+    for (let d = 1; d <= daysInMonth; d++) {
+      const k  = key(year, month, d);
+      const ev = events[k];
+      const el = document.createElement('div');
+      el.className = 'day-cell';
+ 
+      const dayOfWeek = new Date(year, month, d).getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) el.classList.add('weekend');
+ 
+      if (selected && selected.d === d && selected.m === month && selected.y === year)
+        el.classList.add('selected');
+      if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === d)
+        el.classList.add('today');
+ 
+      const num = document.createElement('div');
+      num.className = 'day-num'; num.textContent = d;
+      el.appendChild(num);
+ 
+      if (ev) {
+        if (ev.color) {
+          const bg = document.createElement('div');
+          bg.className = 'day-bg'; bg.style.background = ev.color;
+          el.appendChild(bg);
+          const dot = document.createElement('div');
+          dot.className = 'day-dot'; dot.style.background = ev.color;
+          el.appendChild(dot);
+        }
+        if (ev.title) {
+          const tp = document.createElement('div');
+          tp.className = 'day-title-preview'; tp.textContent = ev.title;
+          el.appendChild(tp);
+        }
+      }
+ 
+      el.addEventListener('click', () => selectDay(d));
+      grid.appendChild(el);
+    }
+  }
+ 
+  function selectDay(d) {
+    pending = { ...(state.events[key(state.year, state.month, d)] || { color:'', title:'', desc:'' }) };
+    state.selected = { y: state.year, m: state.month, d };
+    render();
+  }
+ 
+  function renderUpcoming() {
+    const panel = document.getElementById('panel');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+ 
+    const upcoming = Object.entries(state.events)
+      .map(([k, ev]) => {
+        const [y, m, d] = k.split('-').map(Number);
+        const date = new Date(y, m, d);
+        return { date, ev, y, m, d };
+      })
+      .filter(e => e.date >= today && e.ev.title)
+      .sort((a, b) => a.date - b.date)
+      .slice(0, 3);
+ 
+    if (upcoming.length === 0) {
+      panel.innerHTML = `
+        <div class="panel-section-label">Upcoming</div>
+        <div class="no-upcoming">No upcoming events.<br>Click a day to add one.</div>`;
+      return;
+    }
+ 
+    const items = upcoming.map(({ date, ev, y, m, d }) => {
+      const diff = Math.round((date - today) / 86400000);
+      const countdown = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff}d`;
+      const isToday = diff === 0;
+      const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const colorBar = ev.color ? `background:${ev.color}` : '';
+      return `
+        <div class="upcoming-item" data-y="${y}" data-m="${m}" data-d="${d}">
+          <div class="upcoming-color" style="${colorBar}"></div>
+          <div class="upcoming-body">
+            <div class="upcoming-title">${escHtml(ev.title)}</div>
+            <div class="upcoming-date">${dateStr}</div>
+          </div>
+          <div class="upcoming-countdown${isToday ? ' today' : ''}">${countdown}</div>
+        </div>`;
+    }).join('');
+ 
+    panel.innerHTML = `
+      <div class="panel-section-label">Upcoming</div>
+      <div class="upcoming-list">${items}</div>`;
+ 
+    panel.querySelectorAll('.upcoming-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const y = +el.dataset.y, m = +el.dataset.m, d = +el.dataset.d;
+        state.year = y; state.month = m;
+        selectDay(d);
+      });
+    });
+  }
+ 
+  function renderPanel() {
+    const panel = document.getElementById('panel');
+    const { selected, month, year } = state;
+ 
+    if (!selected || selected.m !== month || selected.y !== year) {
+      renderUpcoming();
+      return;
+    }
+ 
+    panel.innerHTML = `
+      <div class="panel-date">${MONTHS[selected.m]} ${selected.d}, ${selected.y}</div>
+      <div>
+        <div class="panel-label">Color</div>
+        <div class="color-swatches" id="swatches"></div>
+      </div>
+      <div>
+        <div class="panel-label">Title</div>
+        <input class="panel-input" id="ev-title" type="text" placeholder="Add a title…" value="${escHtml(pending.title||'')}">
+      </div>
+      <div>
+        <div class="panel-label">Description</div>
+        <textarea class="panel-input panel-textarea" id="ev-desc" placeholder="Add a note…">${escHtml(pending.desc||'')}</textarea>
+      </div>
+      <div class="saved-flash" id="flash"></div>
+      <div class="panel-actions">
+        <button class="btn-save" id="btn-save">&#10003; Save</button>
+        <button class="btn-clear" id="btn-clear">Clear this day</button>
+      </div>
+    `;
+ 
+    const wrap = document.getElementById('swatches');
+    const noneS = document.createElement('div');
+    noneS.className = 'swatch swatch-none' + (!pending.color ? ' active' : '');
+    noneS.title = 'No color';
+    noneS.innerHTML = '&times;';
+    noneS.addEventListener('click', () => { pending.color = ''; updateSwatches(''); });
+    wrap.appendChild(noneS);
+ 
+    COLORS.forEach(c => {
+      const s = document.createElement('div');
+      s.className = 'swatch' + (pending.color === c.hex ? ' active' : '');
+      s.style.background = c.hex; s.title = c.label;
+      s.addEventListener('click', () => { pending.color = c.hex; updateSwatches(c.hex); });
+      wrap.appendChild(s);
+    });
+ 
+    document.getElementById('ev-title').addEventListener('input', e => { pending.title = e.target.value; });
+    document.getElementById('ev-desc').addEventListener('input',  e => { pending.desc  = e.target.value; });
+ 
+    document.getElementById('btn-save').addEventListener('click', () => {
+      const k = key(selected.y, selected.m, selected.d);
+      const t = (document.getElementById('ev-title').value||'').trim();
+      const d = (document.getElementById('ev-desc').value||'').trim();
+      if (t || d || pending.color) {
+        state.events[k] = { color: pending.color, title: t, desc: d };
+      } else {
+        delete state.events[k];
+      }
+      saveEvents(state.events);
+      const fl = document.getElementById('flash');
+      if (fl) { fl.textContent = 'Saved!'; setTimeout(() => { if (fl) fl.textContent = ''; }, 1500); }
+      renderCalendar();
+    });
+ 
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      delete state.events[key(selected.y, selected.m, selected.d)];
+      saveEvents(state.events);
+      pending = { color:'', title:'', desc:'' };
+      state.selected = null;
+      render();
+    });
+  }
+ 
+  function updateSwatches(activeHex) {
+    document.querySelectorAll('.swatch').forEach(s => {
+      const isNone = s.classList.contains('swatch-none');
+      s.classList.toggle('active', isNone ? !activeHex
+        : s.style.background === activeHex || s.style.backgroundColor === activeHex);
+    });
+  }
+ 
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+ 
+  document.getElementById('prev').addEventListener('click', () => {
+    if (--state.month < 0) { state.month = 11; state.year--; }
+    state.selected = null; render();
+  });
+  document.getElementById('next').addEventListener('click', () => {
+    if (++state.month > 11) { state.month = 0; state.year++; }
+    state.selected = null; render();
+  });
+ 
+  render();
+</script>
+</body>
+</html>
