@@ -160,6 +160,79 @@
       gap: 14px;
     }
  
+    .panel-section-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-ter);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 2px;
+    }
+ 
+    .upcoming-list { display: flex; flex-direction: column; gap: 8px; }
+ 
+    .upcoming-item {
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      padding: 8px 10px;
+      display: grid;
+      grid-template-columns: 4px 1fr auto;
+      align-items: start;
+      gap: 8px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      background: var(--bg);
+    }
+    .upcoming-item:hover { border-color: var(--border-hv); background: var(--bg-sec); }
+ 
+    .upcoming-color {
+      width: 4px;
+      border-radius: 2px;
+      align-self: stretch;
+      min-height: 28px;
+      background: var(--border-md);
+    }
+ 
+    .upcoming-body { overflow: hidden; }
+ 
+    .upcoming-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+ 
+    .upcoming-date {
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 2px;
+    }
+ 
+    .upcoming-countdown {
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      padding: 2px 6px;
+      border-radius: 20px;
+      background: var(--bg-sec);
+      color: var(--text-sec);
+      align-self: center;
+    }
+    .upcoming-countdown.today {
+      background: var(--bg-ter);
+      color: var(--text);
+    }
+ 
+    .no-upcoming {
+      font-size: 13px;
+      color: var(--text-ter);
+      text-align: center;
+      margin-top: 1.5rem;
+      line-height: 1.7;
+    }
+ 
     .panel-empty {
       color: var(--text-ter);
       font-size: 13px;
@@ -390,12 +463,64 @@
     render();
   }
  
+  function renderUpcoming() {
+    const panel = document.getElementById('panel');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+ 
+    const upcoming = Object.entries(state.events)
+      .map(([k, ev]) => {
+        const [y, m, d] = k.split('-').map(Number);
+        const date = new Date(y, m, d);
+        return { date, ev, y, m, d };
+      })
+      .filter(e => e.date >= today && e.ev.title)
+      .sort((a, b) => a.date - b.date)
+      .slice(0, 3);
+ 
+    if (upcoming.length === 0) {
+      panel.innerHTML = `
+        <div class="panel-section-label">Upcoming</div>
+        <div class="no-upcoming">No upcoming events.<br>Click a day to add one.</div>`;
+      return;
+    }
+ 
+    const items = upcoming.map(({ date, ev, y, m, d }) => {
+      const diff = Math.round((date - today) / 86400000);
+      const countdown = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff}d`;
+      const isToday = diff === 0;
+      const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const colorBar = ev.color ? `background:${ev.color}` : '';
+      return `
+        <div class="upcoming-item" data-y="${y}" data-m="${m}" data-d="${d}">
+          <div class="upcoming-color" style="${colorBar}"></div>
+          <div class="upcoming-body">
+            <div class="upcoming-title">${escHtml(ev.title)}</div>
+            <div class="upcoming-date">${dateStr}</div>
+          </div>
+          <div class="upcoming-countdown${isToday ? ' today' : ''}">${countdown}</div>
+        </div>`;
+    }).join('');
+ 
+    panel.innerHTML = `
+      <div class="panel-section-label">Upcoming</div>
+      <div class="upcoming-list">${items}</div>`;
+ 
+    panel.querySelectorAll('.upcoming-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const y = +el.dataset.y, m = +el.dataset.m, d = +el.dataset.d;
+        state.year = y; state.month = m;
+        selectDay(d);
+      });
+    });
+  }
+ 
   function renderPanel() {
     const panel = document.getElementById('panel');
     const { selected, month, year } = state;
  
     if (!selected || selected.m !== month || selected.y !== year) {
-      panel.innerHTML = `<div class="panel-empty">Click a day<br>to add details</div>`;
+      renderUpcoming();
       return;
     }
  
@@ -489,4 +614,3 @@
 </script>
 </body>
 </html>
- 
